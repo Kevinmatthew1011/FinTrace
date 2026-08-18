@@ -13,7 +13,20 @@ export async function GET(request: NextRequest) {
       success: true,
       data: analysis,
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    const err = error as Error;
+    if (err.message && err.message.includes('Entity not found')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'ENTITY_NOT_FOUND',
+            message: err.message,
+          },
+        },
+        { status: 404 }
+      );
+    }
     return handleApiError(error, 'GET /api/v1/network/analysis');
   }
 }

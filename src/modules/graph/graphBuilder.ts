@@ -14,8 +14,20 @@ export class GraphBuilder {
     const nodesMap = new Map<string, GraphNode>();
     const edgesMap = new Map<string, GraphEdge>();
 
+    // Resolve initial seed: if entityId is an account ID, find its owning entity
+    let seedEntityId = entityId;
+    let seedType: 'ENTITY' | 'ACCOUNT' = 'ENTITY';
+    const directEntity = await this.repo.getEntityWithAccounts(entityId);
+    if (!directEntity) {
+      const account = await this.repo.getAccountWithEntity(entityId);
+      if (account && account.entityId) {
+        seedEntityId = account.entityId;
+        seedType = 'ACCOUNT';
+      }
+    }
+
     // Queue for BFS traversal: [entityId, currentHop]
-    const entityQueue: Array<{ id: string; hop: number }> = [{ id: entityId, hop: 0 }];
+    const entityQueue: Array<{ id: string; hop: number }> = [{ id: seedEntityId, hop: 0 }];
 
     while (entityQueue.length > 0) {
       const current = entityQueue.shift()!;
@@ -229,7 +241,7 @@ export class GraphBuilder {
 
     return {
       rootId: entityId,
-      rootType: 'ENTITY',
+      rootType: seedType,
       depth: clampedDepth,
       nodes,
       edges,

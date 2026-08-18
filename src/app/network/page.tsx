@@ -55,24 +55,45 @@ export default function NetworkPage() {
     setLoading(true);
     setError(null);
     try {
-      const [graphRes, analysisRes] = await Promise.all([
-        fetch(`/api/v1/network?entityId=${encodeURIComponent(rootId)}&depth=${depth}`),
-        fetch(`/api/v1/network/analysis?entityId=${encodeURIComponent(rootId)}`),
-      ]);
-
-      if (!graphRes.ok || !analysisRes.ok) {
+      // 1. Load relational graph
+      const graphRes = await fetch(`/api/v1/network?entityId=${encodeURIComponent(rootId)}&depth=${depth}`);
+      if (!graphRes.ok) {
         throw new Error('Failed to retrieve graph data from database');
       }
 
       const graphJson = await graphRes.json();
-      const analysisJson = await analysisRes.json();
-
-      if (graphJson.success && analysisJson.success) {
-        setGraphData(graphJson.data);
-        setAnalysisData(analysisJson.data);
-        if (!selectedNodeId) setSelectedNodeId(rootId);
-      } else {
+      if (!graphJson.success) {
         throw new Error(graphJson.error?.message || 'Graph API error');
+      }
+
+      const graph = graphJson.data;
+      setGraphData(graph);
+      if (!selectedNodeId) setSelectedNodeId(rootId);
+
+      // 2. Determine whether rootId is an Entity or Account
+      const rootNode = graph?.nodes?.find((n: GraphNode) => n.id === rootId);
+      const isEntity = rootNode ? rootNode.type === 'ENTITY' : !rootId.startsWith('ACC-');
+      const entityIdToAnalyze = isEntity ? rootId : rootNode?.entityId;
+
+      // 3. Only call entity network analysis when a valid entity ID is present
+      if (entityIdToAnalyze) {
+        try {
+          const analysisRes = await fetch(`/api/v1/network/analysis?entityId=${encodeURIComponent(entityIdToAnalyze)}`);
+          if (analysisRes.ok) {
+            const analysisJson = await analysisRes.json();
+            if (analysisJson.success) {
+              setAnalysisData(analysisJson.data);
+            } else {
+              setAnalysisData(null);
+            }
+          } else {
+            setAnalysisData(null);
+          }
+        } catch {
+          setAnalysisData(null);
+        }
+      } else {
+        setAnalysisData(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to query graph');
@@ -502,7 +523,7 @@ export default function NetworkPage() {
         <LoadingState message="Constructing relational fraud graph from PostgreSQL..." />
       ) : error ? (
         <ErrorState message={error} onRetry={loadNetwork} />
-      ) : graphData && analysisData ? (
+      ) : graphData ? (
         <div style={{ display: 'grid', gridTemplateColumns: '2.3fr 1fr', gap: '16px', alignItems: 'start' }}>
           {/* Main Visual Graph Canvas */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -543,7 +564,7 @@ export default function NetworkPage() {
                     paddingBottom: '4px',
                   }}
                 >
-                  Findings ({analysisData.findings.length + analysisData.cycles.length})
+                  Findings ({((analysisData?.findings.length || 0) + (analysisData?.cycles.length || 0))})
                 </button>
 
                 <button
@@ -575,14 +596,14 @@ export default function NetworkPage() {
                     paddingBottom: '4px',
                   }}
                 >
-                  Clusters ({analysisData.clusters.length})
+                  Clusters ({analysisData?.clusters.length || 0})
                 </button>
               </div>
 
               {activeTab === 'FINDINGS' && (
                 <FindingsPanel
-                  findings={analysisData.findings}
-                  cycles={analysisData.cycles}
+                  findings={analysisData?.findings || []}
+                  cycles={analysisData?.cycles || []}
                   onHighlightNodes={handleHighlight}
                 />
               )}
@@ -593,22 +614,28 @@ export default function NetworkPage() {
 
               {activeTab === 'CLUSTERS' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {analysisData.clusters.map((cl) => (
-                    <div key={cl.id} style={{ padding: '10px', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '11px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cl.name}</div>
-                      <div style={{ color: 'var(--text-muted)', margin: '2px 0' }}>{cl.typologyHint}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-                        <span style={{ color: '#ef4444', fontWeight: 600 }}>{cl.suspiciousTxCount} Suspicious Txns</span>
-                        <button
-                          onClick={() => handleHighlight(cl.memberNodeIds)}
-                          className="btn-secondary"
-                          style={{ padding: '2px 6px', fontSize: '10px' }}
-                        >
-                          Highlight Cluster
-                        </button>
-                      </div>
+                  {(analysisData?.clusters || []).length === 0 ? (
+                    <div style={{ padding: '16px', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                      No clusters identified for this target.
                     </div>
-                  ))}
+                  ) : (
+                    analysisData?.clusters.map((cl) => (
+                      <div key={cl.id} style={{ padding: '10px', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '11px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cl.name}</div>
+                        <div style={{ color: 'var(--text-muted)', margin: '2px 0' }}>{cl.typologyHint}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                          <span style={{ color: '#ef4444', fontWeight: 600 }}>{cl.suspiciousTxCount} Suspicious Txns</span>
+                          <button
+                            onClick={() => handleHighlight(cl.memberNodeIds)}
+                            className="btn-secondary"
+                            style={{ padding: '2px 6px', fontSize: '10px' }}
+                          >
+                            Highlight Cluster
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>

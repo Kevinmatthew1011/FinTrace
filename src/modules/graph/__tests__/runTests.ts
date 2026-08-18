@@ -1,4 +1,6 @@
 import { NetworkRiskScorer } from '../networkRisk';
+import { graphIntelligenceService } from '../graphAnalysis';
+import { graphBuilder } from '../graphBuilder';
 
 // In-Memory Test Helpers
 interface SimpleNode {
@@ -316,6 +318,36 @@ async function runAllTests() {
       baseEntityScore: 90,
     });
     assert('Test 12: Network Composite Risk Scoring (Normalized 0-100 & Level Mapping)', assessment.score >= 80 && assessment.level === 'CRITICAL');
+  }
+
+  // Test 13: Live Entity Network Analysis succeeds for valid entity
+  {
+    try {
+      const result = await graphIntelligenceService.analyzeEntityNetwork('ENT-8821');
+      assert('Test 13: Live Entity Network Analysis succeeds for valid entity (ENT-8821)', result.entity.id === 'ENT-8821' && Array.isArray(result.findings));
+    } catch (err: any) {
+      assert('Test 13: Live Entity Network Analysis succeeds for valid entity (ENT-8821)', false, err.message);
+    }
+  }
+
+  // Test 14: Account graph query resolves and builds network without 500 error
+  {
+    try {
+      const graph = await graphBuilder.buildEntityGraph('ACC-YES-127', 2);
+      assert('Test 14: Account graph query builds network without error for Account ID (ACC-YES-127)', graph.nodes.length > 0 && graph.rootType === 'ACCOUNT');
+    } catch (err: any) {
+      assert('Test 14: Account graph query builds network without error for Account ID (ACC-YES-127)', false, err.message);
+    }
+  }
+
+  // Test 15: Invalid Entity ID produces controlled Entity not found error rather than unhandled crash
+  {
+    try {
+      await graphIntelligenceService.analyzeEntityNetwork('NON_EXISTENT_ENTITY_9999');
+      assert('Test 15: Invalid Entity ID produces controlled error', false, 'Should have thrown Entity not found');
+    } catch (err: any) {
+      assert('Test 15: Invalid Entity ID produces controlled Entity not found error', err.message && err.message.includes('Entity not found'));
+    }
   }
 
   console.log(`\n========================================================`);
