@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { caseService } from '@/modules/cases/caseService';
-import { handleApiError } from '@/lib/errors';
-import { CasePriority, CaseStatus } from '@prisma/client';
+import { caseService } from '@/modules/cases';
+import { handleApiError, ValidationError } from '@/lib/errors';
+import { CasePriority, CaseStatus, RiskLevel } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +9,8 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || undefined;
     const priority = (searchParams.get('priority') as CasePriority | 'ALL') || undefined;
     const status = (searchParams.get('status') as CaseStatus | 'ALL') || undefined;
+    const riskLevel = (searchParams.get('riskLevel') as RiskLevel | 'ALL') || undefined;
+    const assignedToId = searchParams.get('assignedToId') || undefined;
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : 1;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : 25;
 
@@ -16,6 +18,8 @@ export async function GET(request: NextRequest) {
       search,
       priority,
       status,
+      riskLevel,
+      assignedToId,
       page,
       limit,
     });
@@ -26,7 +30,7 @@ export async function GET(request: NextRequest) {
       pagination: result.pagination,
     });
   } catch (error) {
-    return handleApiError(error, 'GET /api/v1/investigations');
+    return handleApiError(error, 'GET /api/v1/cases');
   }
 }
 
@@ -34,6 +38,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // If alertId is passed, use alert-to-case workflow
     if (body?.alertId) {
       const result = await caseService.createCaseFromAlert(body.alertId, body.investigatorId);
       return NextResponse.json({
@@ -42,6 +47,11 @@ export async function POST(request: NextRequest) {
         message: result.message,
         data: result.case,
       });
+    }
+
+    // Manual case creation
+    if (!body?.title || !body?.description) {
+      throw new ValidationError('Case title and description are required.');
     }
 
     const newCase = await caseService.createCase({
@@ -59,6 +69,6 @@ export async function POST(request: NextRequest) {
       data: newCase,
     });
   } catch (error) {
-    return handleApiError(error, 'POST /api/v1/investigations');
+    return handleApiError(error, 'POST /api/v1/cases');
   }
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { StatusBadge } from '../common/StatusBadge';
 import { LoadingState, ErrorState } from '../common/StateViews';
 
@@ -81,8 +82,13 @@ export const InvestigationSummary: React.FC = () => {
                   }}
                 >
                   <td style={{ padding: '10px' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{c.title}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }} className="font-mono">
+                    <Link
+                      href={`/investigations/${c.id}`}
+                      style={{ fontWeight: 600, color: 'var(--text-primary)', textDecoration: 'none' }}
+                    >
+                      {c.title}
+                    </Link>
+                    <div style={{ fontSize: '10px', color: 'var(--accent-primary, #3b82f6)' }} className="font-mono">
                       {c.caseNumber}
                     </div>
                   </td>

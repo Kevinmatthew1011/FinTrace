@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { RiskBadge } from '../common/RiskBadge';
 import { StatusBadge } from '../common/StatusBadge';
 import { LoadingState, ErrorState } from '../common/StateViews';
@@ -16,12 +17,16 @@ interface AlertItem {
   status: AlertStatus;
   sourceEntityName?: string;
   indicators: string[];
+  caseId?: string;
+  caseNumber?: string;
 }
 
 export const AlertsSection: React.FC<{ limit?: number }> = ({ limit = 5 }) => {
+  const router = useRouter();
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [openingAlertId, setOpeningAlertId] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadAlerts() {
@@ -41,6 +46,28 @@ export const AlertsSection: React.FC<{ limit?: number }> = ({ limit = 5 }) => {
     }
     loadAlerts();
   }, [limit]);
+
+  const handleCreateOrOpenInvestigation = async (targetAlert: AlertItem) => {
+    setOpeningAlertId(targetAlert.id);
+    try {
+      const res = await fetch('/api/v1/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alertId: targetAlert.id }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.data?.caseDetails?.id) {
+        router.push(`/investigations/${data.data.caseDetails.id}`);
+      } else {
+        alert(data.error?.message || 'Error initializing investigation case');
+      }
+    } catch {
+      alert('Network error communicating with case service');
+    } finally {
+      setOpeningAlertId(null);
+    }
+  };
 
   return (
     <div
@@ -97,21 +124,47 @@ export const AlertsSection: React.FC<{ limit?: number }> = ({ limit = 5 }) => {
                 {alert.description}
               </p>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                {alert.indicators.map((ind, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      fontSize: '10px',
-                      padding: '2px 6px',
-                      borderRadius: '3px',
-                      backgroundColor: 'var(--bg-elevated)',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    ▸ {ind}
-                  </span>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                  {alert.indicators.map((ind, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        backgroundColor: 'var(--bg-elevated)',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      ▸ {ind}
+                    </span>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => handleCreateOrOpenInvestigation(alert)}
+                  disabled={openingAlertId === alert.id}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    borderRadius: '4px',
+                    backgroundColor: alert.caseId ? 'var(--bg-elevated)' : 'var(--accent-primary, #3b82f6)',
+                    color: alert.caseId ? 'var(--accent-primary, #3b82f6)' : '#ffffff',
+                    border: '1px solid var(--border-subtle)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  {openingAlertId === alert.id
+                    ? 'Loading...'
+                    : alert.caseId
+                    ? `Open Case ${alert.caseNumber || ''} ↗`
+                    : '🔍 Create Investigation'}
+                </button>
               </div>
             </div>
           ))}

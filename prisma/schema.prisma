@@ -92,9 +92,31 @@ enum CaseStatus {
   UNDER_REVIEW
   IN_REVIEW
   EVIDENCE_SUBMITTED
+  ESCALATED
+  SUSPENDED
+  RESOLVED
   CLOSED
   CLOSED_CONFIRMED_FRAUD
   CLOSED_FALSE_POSITIVE
+}
+
+enum CaseResolutionType {
+  CONFIRMED_FRAUD
+  SUSPICIOUS_ACTIVITY
+  FALSE_POSITIVE
+  INSUFFICIENT_EVIDENCE
+  REFERRED
+}
+
+enum EvidenceType {
+  TRANSACTION
+  ENTITY
+  ACCOUNT
+  NETWORK
+  RISK_ASSESSMENT
+  ALERT
+  INVESTIGATOR_NOTE
+  SYSTEM_FINDING
 }
 
 model User {
@@ -109,8 +131,11 @@ model User {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  assignedCases Case[]     @relation("CaseAssignee")
-  auditLogs     AuditLog[]
+  assignedCases   Case[]         @relation("CaseAssignee")
+  resolvedCases   Case[]         @relation("CaseResolver")
+  createdEvidences CaseEvidence[] @relation("EvidenceCreator")
+  authoredNotes   CaseNote[]     @relation("NoteAuthor")
+  auditLogs       AuditLog[]
 
   @@index([role])
   @@index([email])
@@ -135,6 +160,7 @@ model Entity {
   sourceAlerts    FraudAlert[] @relation("SourceEntityAlerts")
   targetAlerts    FraudAlert[] @relation("TargetEntityAlerts")
   riskAssessments RiskScore[]
+  primaryCases    Case[]       @relation("CasePrimaryEntity")
 
   @@index([riskLevel])
   @@index([entityType])
@@ -250,24 +276,78 @@ model FraudAlert {
 }
 
 model Case {
-  id            String       @id @default(uuid())
-  caseNumber    String       @unique
-  title         String
-  description   String       @db.Text
-  priority      CasePriority @default(HIGH)
-  status        CaseStatus   @default(OPEN)
-  assignedToId  String?
-  assignedTo    User?        @relation("CaseAssignee", fields: [assignedToId], references: [id])
-  evidenceNotes Json?
-  findings      String?      @db.Text
-  tags          String[]     @default([])
-  alerts        FraudAlert[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                 String              @id @default(uuid())
+  caseNumber         String              @unique
+  title              String
+  description        String              @db.Text
+  priority           CasePriority        @default(HIGH)
+  status             CaseStatus          @default(OPEN)
+  assignedToId       String?
+  assignedTo         User?               @relation("CaseAssignee", fields: [assignedToId], references: [id])
+  primaryEntityId    String?
+  primaryEntity      Entity?             @relation("CasePrimaryEntity", fields: [primaryEntityId], references: [id])
+  riskScore          Float               @default(0.0)
+  riskLevel          RiskLevel           @default(LOW)
+  escalationReason   String?
+  escalatedAt        DateTime?
+  resolutionType     CaseResolutionType?
+  resolutionSummary  String?             @db.Text
+  resolvedAt         DateTime?
+  resolvedById       String?
+  resolvedBy         User?               @relation("CaseResolver", fields: [resolvedById], references: [id])
+  evidenceNotes      Json?
+  findings           String?             @db.Text
+  tags               String[]            @default([])
+  alerts             FraudAlert[]
+  evidences          CaseEvidence[]
+  notes              CaseNote[]
+  auditLogs          AuditLog[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@index([status])
   @@index([priority])
   @@index([assignedToId])
+  @@index([primaryEntityId])
+  @@index([riskLevel])
+  @@index([createdAt])
+}
+
+model CaseEvidence {
+  id           String       @id @default(uuid())
+  caseId       String
+  case         Case         @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  evidenceType EvidenceType @default(SYSTEM_FINDING)
+  title        String
+  description  String       @db.Text
+  source       String       // e.g. "TRANSACTION", "NETWORK_ENGINE", "AI_PREDICTOR", "MANUAL"
+  sourceId     String?      // Reference ID to transaction, entity, alert, etc.
+  severity     RiskLevel    @default(LOW)
+  metadata     Json?
+  createdById  String?
+  createdBy    User?        @relation("EvidenceCreator", fields: [createdById], references: [id])
+  createdAt    DateTime     @default(now())
+
+  @@index([caseId])
+  @@index([evidenceType])
+  @@index([sourceId])
+  @@index([createdAt])
+}
+
+model CaseNote {
+  id                String   @id @default(uuid())
+  caseId            String
+  case              Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  authorId          String?
+  author            User?    @relation("NoteAuthor", fields: [authorId], references: [id])
+  authorName        String   @default("Investigator")
+  content           String   @db.Text
+  isSystemGenerated Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([authorId])
   @@index([createdAt])
 }
 
@@ -275,6 +355,8 @@ model AuditLog {
   id         String   @id @default(uuid())
   userId     String?
   user       User?    @relation(fields: [userId], references: [id])
+  caseId     String?
+  case       Case?    @relation(fields: [caseId], references: [id])
   action     String   // e.g. "VIEW_GRAPH", "ESCALATE_ALERT", "EXPORT_REPORT"
   resource   String   // e.g. "ENTITY_12345", "CASE_9876"
   ipAddress  String?
@@ -283,6 +365,7 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([userId])
+  @@index([caseId])
   @@index([action])
   @@index([createdAt])
 }
