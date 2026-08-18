@@ -286,3 +286,43 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
 }
+
+enum AIClassification {
+  NORMAL
+  SUSPICIOUS
+  LIKELY_FRAUD
+  HIGH_CONFIDENCE_FRAUD
+}
+
+enum AIAssessmentTargetType {
+  TRANSACTION
+  ACCOUNT
+  ENTITY
+  NETWORK
+}
+
+model AIAssessment {
+  id                     String                 @id @default(uuid())
+  targetType             AIAssessmentTargetType
+  targetId               String
+  fraudProbability       Float                  // 0.0 - 1.0
+  fraudScore             Float                  // 0.0 - 100.0
+  anomalyScore           Float                  // 0.0 - 100.0
+  classification         AIClassification       @default(NORMAL)
+  confidence             Float                  // 0.0 - 1.0
+  deterministicRiskScore Float?                 // Phase 4 baseline reference
+  networkRiskScore       Float?                 // Phase 3 network reference
+  combinedScore          Float                  // Fused AI-enhanced score (0-100)
+  combinedRiskLevel      RiskLevel              @default(LOW)
+  evidence               Json                   // Array of structured explainability evidence
+  featureSnapshot        Json                   // Feature vectors snapshot
+  suspiciousPatterns     Json?                  // Discovered complex patterns
+  modelName              String                 @default("FinTrace-NeuralEnsemble-v1")
+  modelVersion           String                 @default("v1.5.0-ai-predictive")
+  createdAt              DateTime               @default(now())
+
+  @@index([targetType, targetId])
+  @@index([classification])
+  @@index([combinedRiskLevel])
+  @@index([createdAt])
+}

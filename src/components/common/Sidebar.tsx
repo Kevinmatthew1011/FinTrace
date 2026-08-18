@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Transactions', href: '/transactions', icon: '💳' },
   { name: 'Fraud Network', href: '/network', icon: '🕸️' },
   { name: 'Risk Intelligence', href: '/risk', icon: '⚡' },
+  { name: 'AI Intelligence', href: '/ai', icon: '🧠', badge: 'AI Live', badgeType: 'info' },
   { name: 'Alerts', href: '/alerts', icon: '🚨', badge: '156', badgeType: 'danger' },
   { name: 'Investigations', href: '/investigations', icon: '📁', badge: '24', badgeType: 'warning' },
   { name: 'Administration', href: '/admin', icon: '⚙️' },

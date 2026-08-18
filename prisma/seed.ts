@@ -9,6 +9,7 @@ async function main() {
   // 1. Clean existing records in correct foreign key order
   console.log('[Seed] Cleaning existing records...');
   await prisma.auditLog.deleteMany({});
+  await prisma.aIAssessment.deleteMany({});
   await prisma.riskScore.deleteMany({});
   await prisma.fraudAlert.deleteMany({});
   await prisma.transaction.deleteMany({});
@@ -148,6 +149,60 @@ async function main() {
     });
   }
 
+  // 9. Seed AI Assessments for key entities
+  console.log('[Seed] Seeding initial Phase 5 AI assessments...');
+  const keyEntities = ['ENT-8821', 'ENT-4109', 'ENT-3301', 'ENT-1001'];
+  for (const entId of keyEntities) {
+    const ent = dataset.entities.find((e) => e.id === entId);
+    if (ent) {
+      const isHigh = ent.riskScore >= 70;
+      const fraudProb = isHigh ? 0.91 : ent.riskScore >= 40 ? 0.48 : 0.08;
+      const anomaly = isHigh ? 82.0 : ent.riskScore >= 40 ? 44.0 : 12.0;
+      const classification = isHigh
+        ? 'HIGH_CONFIDENCE_FRAUD'
+        : ent.riskScore >= 40
+        ? 'SUSPICIOUS'
+        : 'NORMAL';
+
+      await prisma.aIAssessment.create({
+        data: {
+          id: `seed-ai-${ent.id}`,
+          targetType: 'ENTITY',
+          targetId: ent.id,
+          fraudProbability: fraudProb,
+          fraudScore: Number((fraudProb * 100).toFixed(1)),
+          anomalyScore: anomaly,
+          classification: classification as any,
+          confidence: 0.94,
+          deterministicRiskScore: ent.riskScore,
+          networkRiskScore: isHigh ? 85.0 : 20.0,
+          combinedScore: Number(((ent.riskScore * 0.35) + (isHigh ? 85 * 0.25 : 20 * 0.25) + (fraudProb * 100 * 0.25) + (anomaly * 0.15)).toFixed(1)),
+          combinedRiskLevel: ent.riskLevel,
+          evidence: [
+            {
+              statement: isHigh
+                ? `Entity ${ent.name} exhibits classic carousel structuring and mule aggregation patterns.`
+                : `Entity ${ent.name} operates within normal baseline transactional behavior.`,
+              metricName: 'Composite AI Anomaly & Topology',
+              metricValue: fraudProb,
+              impactPercentage: 40,
+              category: 'NETWORK_TOPOLOGY',
+              severity: ent.riskLevel,
+            },
+          ] as unknown as Prisma.InputJsonValue,
+          featureSnapshot: {
+            amountToMeanRatio: isHigh ? 6.4 : 1.1,
+            count15m: isHigh ? 12 : 1,
+            cycleParticipationCount: isHigh ? 2 : 0,
+            deterministicRiskScore: ent.riskScore,
+          } as unknown as Prisma.InputJsonValue,
+          modelName: 'FinTrace-NeuralEnsemble-v1',
+          modelVersion: 'v1.5.0-ai-predictive',
+        },
+      });
+    }
+  }
+
   // Final count verification
   const userCount = await prisma.user.count();
   const entityCount = await prisma.entity.count();
@@ -156,16 +211,18 @@ async function main() {
   const alertCount = await prisma.fraudAlert.count();
   const caseCount = await prisma.case.count();
   const riskScoreCount = await prisma.riskScore.count();
+  const aiAssessmentCount = await prisma.aIAssessment.count();
 
   console.log('\n========================================');
   console.log('SEEDING COMPLETED SUCCESSFULLY:');
-  console.log(`- Users:        ${userCount}`);
-  console.log(`- Entities:     ${entityCount}`);
-  console.log(`- Accounts:     ${accountCount}`);
-  console.log(`- Transactions: ${txCount}`);
-  console.log(`- Alerts:       ${alertCount}`);
-  console.log(`- Cases:        ${caseCount}`);
-  console.log(`- Risk Scores:  ${riskScoreCount}`);
+  console.log(`- Users:          ${userCount}`);
+  console.log(`- Entities:       ${entityCount}`);
+  console.log(`- Accounts:       ${accountCount}`);
+  console.log(`- Transactions:   ${txCount}`);
+  console.log(`- Alerts:         ${alertCount}`);
+  console.log(`- Cases:          ${caseCount}`);
+  console.log(`- Risk Scores:    ${riskScoreCount}`);
+  console.log(`- AI Assessments: ${aiAssessmentCount}`);
   console.log('========================================\n');
 }
 
