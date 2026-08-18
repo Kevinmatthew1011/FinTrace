@@ -1,0 +1,288 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  INVESTIGATOR
+  ANALYST
+  AUDITOR
+}
+
+enum EntityType {
+  INDIVIDUAL
+  BUSINESS
+  MERCHANT
+  SHELL_COMPANY
+  MULE_AGGREGATOR
+  HIGH_RISK_MERCHANT
+  OFFSHORE_ENTITY
+  CRYPTO_EXCHANGE
+  CRYPTO_WALLET
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TransactionChannel {
+  UPI
+  IMPS
+  NEFT
+  RTGS
+  SWIFT
+  CRYPTO
+}
+
+enum TransactionStatus {
+  COMPLETED
+  PENDING
+  FAILED
+  REVERSED
+  FLAGGED
+  BLOCKED
+  UNDER_REVIEW
+}
+
+enum AlertStatus {
+  NEW
+  OPEN
+  INVESTIGATING
+  ESCALATED
+  RESOLVED
+  DISMISSED
+}
+
+enum AlertType {
+  CIRCULAR_ROUTING
+  RAPID_VELOCITY
+  MULE_NETWORK
+  STRUCTURING
+  DORMANT_SPIKE
+  HIGH_RISK_INTERACTION
+  CYCLIC_TRANSACTION
+  RAPID_DISPERSAL
+  STRUCTURING_SMURFING
+  HIGH_RISK_COUNTERPARTY
+  DORMANT_SUDDEN_SPIKE
+  MULE_NETWORK_ACTIVITY
+  ROUND_AMOUNT_LAYERING
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+  URGENT
+}
+
+enum CaseStatus {
+  OPEN
+  ASSIGNED
+  PENDING_REVIEW
+  UNDER_REVIEW
+  IN_REVIEW
+  EVIDENCE_SUBMITTED
+  CLOSED
+  CLOSED_CONFIRMED_FRAUD
+  CLOSED_FALSE_POSITIVE
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  name         String
+  passwordHash String      @default("demo-hash")
+  role         Role        @default(INVESTIGATOR)
+  badgeNumber  String?     @unique
+  department   String?     @default("Financial Intelligence Unit")
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  assignedCases Case[]     @relation("CaseAssignee")
+  auditLogs     AuditLog[]
+
+  @@index([role])
+  @@index([email])
+}
+
+model Entity {
+  id              String      @id @default(uuid())
+  name            String
+  entityType      EntityType  @default(INDIVIDUAL)
+  registrationNum String?     @unique
+  taxIdentifier   String?     @unique // PAN / GSTIN / Tax ID
+  jurisdiction    String      @default("IN")
+  riskScore       Float       @default(0.0) // 0 - 100
+  riskLevel       RiskLevel   @default(LOW)
+  isSanctioned    Boolean     @default(false)
+  isPEP           Boolean     @default(false) // Politically Exposed Person
+  metadata        Json?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  accounts        Account[]
+  sourceAlerts    FraudAlert[] @relation("SourceEntityAlerts")
+  targetAlerts    FraudAlert[] @relation("TargetEntityAlerts")
+  riskAssessments RiskScore[]
+
+  @@index([riskLevel])
+  @@index([entityType])
+  @@index([name])
+  @@index([taxIdentifier])
+}
+
+model Account {
+  id             String        @id @default(uuid())
+  accountNumber  String        @unique
+  bankName       String
+  ifscOrRouting  String
+  accountType    String        @default("CURRENT") // CURRENT, SAVINGS, ESCROW, CRYPTO
+  currency       String        @default("INR")
+  currentBalance Decimal       @default(0.0) @db.Decimal(18, 2)
+  riskScore      Float         @default(0.0)
+  isFrozen       Boolean       @default(false)
+  isMuleFlagged  Boolean       @default(false)
+  entityId       String
+  entity         Entity        @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  outgoingTx     Transaction[] @relation("SenderAccount")
+  incomingTx     Transaction[] @relation("ReceiverAccount")
+
+  @@index([entityId])
+  @@index([accountNumber])
+  @@index([bankName])
+  @@index([isMuleFlagged])
+}
+
+model Transaction {
+  id              String             @id @default(uuid())
+  referenceNumber String             @unique
+  senderAccountId String
+  senderAccount   Account            @relation("SenderAccount", fields: [senderAccountId], references: [id])
+  receiverAccountId String
+  receiverAccount Account            @relation("ReceiverAccount", fields: [receiverAccountId], references: [id])
+  amount          Decimal            @db.Decimal(18, 2)
+  currency        String             @default("INR")
+  channel         TransactionChannel @default(IMPS)
+  narrative       String?
+  timestamp       DateTime           @default(now())
+  status          TransactionStatus  @default(COMPLETED)
+  isSuspicious    Boolean            @default(false)
+  riskScore       Float              @default(0.0)
+  riskLevel       RiskLevel          @default(LOW)
+  flaggedRules    String[]           @default([])
+  metadata        Json?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @default(now()) @updatedAt
+
+  alerts          FraudAlert[]       @relation("TransactionAlerts")
+  riskAssessments RiskScore[]        @relation("TransactionRiskScores")
+
+  @@index([timestamp])
+  @@index([senderAccountId])
+  @@index([receiverAccountId])
+  @@index([riskLevel])
+  @@index([status])
+  @@index([isSuspicious])
+  @@index([referenceNumber])
+}
+
+model RiskScore {
+  id              String       @id @default(uuid())
+  entityId        String?
+  entity          Entity?      @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  transactionId   String?
+  transaction     Transaction? @relation("TransactionRiskScores", fields: [transactionId], references: [id], onDelete: Cascade)
+  overallScore    Float        // 0 - 100
+  riskLevel       RiskLevel
+  velocityScore   Float        @default(0.0)
+  networkScore    Float        @default(0.0)
+  anomalyScore    Float        @default(0.0)
+  hopDistance     Int          @default(0)
+  reasoning       Json         // Detailed breakdown of why risk is high
+  modelVersion    String       @default("v1.0.0-sih-prototype")
+  createdAt       DateTime     @default(now())
+
+  @@index([entityId])
+  @@index([transactionId])
+  @@index([riskLevel])
+  @@index([createdAt])
+}
+
+model FraudAlert {
+  id             String       @id @default(uuid())
+  alertNumber    String       @unique @default(uuid())
+  alertType      AlertType
+  title          String
+  description    String
+  severity       RiskLevel    @default(HIGH)
+  status         AlertStatus  @default(NEW)
+  sourceEntityId String?
+  sourceEntity   Entity?      @relation("SourceEntityAlerts", fields: [sourceEntityId], references: [id])
+  targetEntityId String?
+  targetEntity   Entity?      @relation("TargetEntityAlerts", fields: [targetEntityId], references: [id])
+  transactions   Transaction[] @relation("TransactionAlerts")
+  aiExplanation  String?      @db.Text
+  indicators     Json?
+  caseId         String?
+  case           Case?        @relation(fields: [caseId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([severity])
+  @@index([status])
+  @@index([createdAt])
+  @@index([sourceEntityId])
+  @@index([caseId])
+}
+
+model Case {
+  id            String       @id @default(uuid())
+  caseNumber    String       @unique
+  title         String
+  description   String       @db.Text
+  priority      CasePriority @default(HIGH)
+  status        CaseStatus   @default(OPEN)
+  assignedToId  String?
+  assignedTo    User?        @relation("CaseAssignee", fields: [assignedToId], references: [id])
+  evidenceNotes Json?
+  findings      String?      @db.Text
+  tags          String[]     @default([])
+  alerts        FraudAlert[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([status])
+  @@index([priority])
+  @@index([assignedToId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String   // e.g. "VIEW_GRAPH", "ESCALATE_ALERT", "EXPORT_REPORT"
+  resource   String   // e.g. "ENTITY_12345", "CASE_9876"
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
