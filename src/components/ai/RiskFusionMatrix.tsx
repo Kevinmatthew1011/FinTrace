@@ -27,8 +27,8 @@ export const RiskFusionMatrix: React.FC<RiskFusionMatrixProps> = ({ fusionResult
       color: '#a855f7',
     },
     {
-      name: 'Phase 5 AI Fraud Prediction',
-      subtext: 'Neural ensemble & non-linear patterns',
+      name: 'Phase 5 Fraud Predictor',
+      subtext: 'Predictive scoring & pattern matching',
       score: fusionResult.aiFraudProbabilityScore,
       weight: fusionResult.fusionWeights.aiPredictive,
       weightedScore: fusionResult.aiFraudProbabilityScore * fusionResult.fusionWeights.aiPredictive,

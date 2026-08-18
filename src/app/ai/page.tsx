@@ -105,7 +105,7 @@ export default function AIPredictiveIntelligencePage() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              AI Fraud Detection & Predictive Intelligence
+              Automated Anomaly Detection & Behavioral Baselines
             </h1>
             <span
               style={{
@@ -118,11 +118,11 @@ export default function AIPredictiveIntelligencePage() {
                 border: '1px solid rgba(56, 189, 248, 0.3)',
               }}
             >
-              PHASE 5 LIVE
+              INTELLIGENCE ACTIVE
             </span>
           </div>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Calibrated Neural Ensemble • Multi-Sigma Anomaly Baselines • Risk Fusion Matrix • Explainable XAI
+            Statistical Anomaly Baselines • Multi-Factor Risk Fusion • Explainable Pattern Detection • Generative AI Assistant: Coming Soon
           </p>
         </div>
 
@@ -200,7 +200,7 @@ export default function AIPredictiveIntelligencePage() {
       )}
 
       {loading ? (
-        <LoadingState message="Executing Neural Ensemble feature extraction and behavioral anomaly inference..." />
+        <LoadingState message="Calculating statistical baseline deviations and multi-factor risk fusion..." />
       ) : error ? (
         <ErrorState message={error} onRetry={loadAIData} />
       ) : assessment ? (

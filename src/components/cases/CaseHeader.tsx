@@ -41,18 +41,42 @@ interface CaseHeaderProps {
 export const CaseHeader: React.FC<CaseHeaderProps> = ({ caseData, onRefresh }) => {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showPriorityModal, setShowPriorityModal] = useState(false);
   const [showEscalateModal, setShowEscalateModal] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
 
   // Form states
   const [newStatus, setNewStatus] = useState<CaseStatus>(caseData.status);
+  const [newPriority, setNewPriority] = useState<CasePriority>(caseData.priority);
   const [statusReason, setStatusReason] = useState('');
   const [escalationReason, setEscalationReason] = useState('');
   const [escalationPriority, setEscalationPriority] = useState<CasePriority>('CRITICAL');
   const [resolutionType, setResolutionType] = useState<CaseResolutionType>('CONFIRMED_FRAUD');
   const [resolutionSummary, setResolutionSummary] = useState('');
   const [closureSummary, setClosureSummary] = useState('');
+
+  const handleUpdatePriority = async () => {
+    setLoadingAction('priority');
+    try {
+      const res = await fetch(`/api/v1/cases/${caseData.id}/priority`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priority: newPriority }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowPriorityModal(false);
+        onRefresh();
+      } else {
+        alert(data.error?.message || 'Error updating priority');
+      }
+    } catch {
+      alert('Network error updating priority');
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   const handleUpdateStatus = async () => {
     setLoadingAction('status');
@@ -250,6 +274,22 @@ export const CaseHeader: React.FC<CaseHeaderProps> = ({ caseData, onRefresh }) =
             }}
           >
             Change Status
+          </button>
+
+          <button
+            onClick={() => setShowPriorityModal(true)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              borderRadius: '5px',
+              border: '1px solid var(--border-subtle)',
+              backgroundColor: 'var(--bg-secondary)',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
+            }}
+          >
+            Change Priority
           </button>
 
           {caseData.status !== 'ESCALATED' && caseData.status !== 'CLOSED' && (
@@ -529,6 +569,96 @@ export const CaseHeader: React.FC<CaseHeaderProps> = ({ caseData, onRefresh }) =
                 }}
               >
                 {loadingAction === 'status' ? 'Updating...' : 'Confirm Update'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Priority Modal */}
+      {showPriorityModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              width: '100%',
+              maxWidth: '440px',
+              padding: '24px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: 'var(--text-primary)' }}>
+              Change Case Priority
+            </h3>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
+                Select Priority
+              </label>
+              <select
+                value={newPriority}
+                onChange={(e) => setNewPriority(e.target.value as CasePriority)}
+                style={{
+                  width: '100%',
+                  padding: '8px 10px',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '6px',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                }}
+              >
+                <option value="LOW">LOW — Routine administrative inquiry</option>
+                <option value="MEDIUM">MEDIUM — Standard forensic inquiry</option>
+                <option value="HIGH">HIGH — High-priority active threat</option>
+                <option value="CRITICAL">CRITICAL — Severe urgent incident / active syndicate</option>
+                <option value="URGENT">URGENT — Immediate executive escalation</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => setShowPriorityModal(false)}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  backgroundColor: 'transparent',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdatePriority}
+                disabled={loadingAction === 'priority'}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  backgroundColor: 'var(--accent-primary, #3b82f6)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                }}
+              >
+                {loadingAction === 'priority' ? 'Updating...' : 'Save Priority'}
               </button>
             </div>
           </div>

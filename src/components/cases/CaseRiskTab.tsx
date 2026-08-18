@@ -121,10 +121,10 @@ export const CaseRiskTab: React.FC<CaseRiskTabProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                Phase 5 — AI Predictive Intelligence
+                Phase 5 — Behavioral Anomaly & Risk Fusion
               </h3>
               <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>
-                Neural ensemble & statistical anomaly synthesis
+                Behavioral anomaly baselines & risk fusion synthesis
               </p>
             </div>
             {aiRiskAssessment && (

@@ -629,6 +629,12 @@ export class CaseService {
       }
     }
 
+    let validCreatedById = input.createdById;
+    if (validCreatedById) {
+      const userExists = await prisma.user.findUnique({ where: { id: validCreatedById } });
+      if (!userExists) validCreatedById = undefined;
+    }
+
     const evidence = await prisma.caseEvidence.create({
       data: {
         caseId,
@@ -639,7 +645,7 @@ export class CaseService {
         sourceId: input.sourceId,
         severity: input.severity || 'LOW',
         metadata: input.metadata ? (input.metadata as unknown as Prisma.InputJsonValue) : undefined,
-        createdById: input.createdById,
+        createdById: validCreatedById,
       },
     });
 
@@ -787,6 +793,51 @@ export class CaseService {
           fromStatus: currentStatus,
           toStatus: newStatus,
           reason,
+        },
+      },
+    });
+
+    return this.getCaseDossier(caseId);
+  }
+
+  /**
+   * Update Case Priority independently with PRIORITY_CHANGED audit event
+   */
+  async updateCasePriority(caseId: string, newPriority: CasePriority, actorUserId?: string) {
+    const targetCase = await prisma.case.findUnique({ where: { id: caseId } });
+    if (!targetCase) throw new NotFoundError(`Case not found: ${caseId}`);
+
+    const previousPriority = targetCase.priority;
+
+    if (previousPriority === newPriority) {
+      return this.getCaseDossier(caseId);
+    }
+
+    await prisma.case.update({
+      where: { id: caseId },
+      data: { priority: newPriority },
+    });
+
+    // Add note
+    await this.addNote(caseId, {
+      authorId: actorUserId,
+      authorName: 'System Case Manager',
+      content: `Case priority changed from ${previousPriority} to ${newPriority}.`,
+      isSystemGenerated: true,
+    });
+
+    // Audit Log
+    await prisma.auditLog.create({
+      data: {
+        caseId,
+        userId: actorUserId,
+        action: 'PRIORITY_CHANGED',
+        resource: `PRIORITY_${newPriority}`,
+        metadata: {
+          previousPriority,
+          newPriority,
+          caseId,
+          actor: actorUserId || 'Investigator',
         },
       },
     });

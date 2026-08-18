@@ -139,10 +139,10 @@ export default function RiskIntelligencePage() {
           <span style={{ fontSize: '20px' }}>🧠</span>
           <div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8' }}>
-              Phase 5 AI Fraud Detection & Neural Ensemble Available
+              Statistical Anomaly Baselines & Multi-Factor Risk Fusion
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              Synthesize this deterministic risk score with behavioral anomaly baselines and non-linear predictive AI.
+              Synthesize deterministic risk scores with behavioral anomaly baselines and multi-factor risk fusion.
             </div>
           </div>
         </div>

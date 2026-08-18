@@ -13,6 +13,7 @@ import { CaseRiskTab } from '@/components/cases/CaseRiskTab';
 import { CaseAlertsTab } from '@/components/cases/CaseAlertsTab';
 import { CaseNotesTab } from '@/components/cases/CaseNotesTab';
 import { CaseTimelineTab } from '@/components/cases/CaseTimelineTab';
+import { CaseAssistantTab } from '@/components/cases/CaseAssistantTab';
 
 export default function CaseDossierPage() {
   const params = useParams();
@@ -90,6 +91,7 @@ export default function CaseDossierPage() {
           >
             {[
               { id: 'overview', label: 'Overview' },
+              { id: 'assistant', label: 'AI Assistant (Coming Soon)' },
               { id: 'evidence', label: `Evidence (${dossier.evidences?.length || 0})` },
               { id: 'transactions', label: `Transactions (${dossier.transactions?.length || 0})` },
               { id: 'network', label: 'Network Graph' },
@@ -124,6 +126,14 @@ export default function CaseDossierPage() {
           {/* Tab Content Panes */}
           {activeTab === 'overview' && (
             <CaseOverviewTab dossier={dossier} onSelectTab={setActiveTab} />
+          )}
+
+          {activeTab === 'assistant' && (
+            <CaseAssistantTab
+              caseId={dossier.caseDetails.id}
+              caseNumber={dossier.caseDetails.caseNumber}
+              primaryEntityName={dossier.primaryEntity?.name}
+            />
           )}
 
           {activeTab === 'evidence' && (
