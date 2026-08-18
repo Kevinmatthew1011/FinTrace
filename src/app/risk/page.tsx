@@ -136,23 +136,23 @@ export default function RiskIntelligencePage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '20px' }}>🧠</span>
+          <span style={{ fontSize: '20px' }}>🤖</span>
           <div>
             <div style={{ fontSize: '13px', fontWeight: 700, color: '#38bdf8' }}>
-              Statistical Anomaly Baselines & Multi-Factor Risk Fusion
+              AI Investigation Assistant — Coming Soon
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-              Synthesize deterministic risk scores with behavioral anomaly baselines and multi-factor risk fusion.
+              Next-generation releases will introduce conversational case summarization and automated STR report drafting.
             </div>
           </div>
         </div>
 
         <a
-          href={`/ai`}
+          href="/ai"
           className="btn-primary"
           style={{ padding: '6px 14px', fontSize: '12px', textDecoration: 'none' }}
         >
-          Open AI Intelligence ➔
+          View AI Roadmap ➔
         </a>
       </div>
 

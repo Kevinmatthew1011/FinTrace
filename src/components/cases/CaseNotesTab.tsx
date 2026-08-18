@@ -21,9 +21,19 @@ interface CaseNotesTabProps {
   onRefresh: () => void;
 }
 
+const TRUNCATE_LENGTH = 220;
+
 export const CaseNotesTab: React.FC<CaseNotesTabProps> = ({ caseId, notes, onRefresh }) => {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (noteId: string) => {
+    setExpandedNotes((prev) => ({
+      ...prev,
+      [noteId]: !prev[noteId],
+    }));
+  };
 
   const handleAddNote = async () => {
     if (!content.trim()) return;
@@ -112,54 +122,82 @@ export const CaseNotesTab: React.FC<CaseNotesTabProps> = ({ caseId, notes, onRef
             No notes or findings recorded yet.
           </div>
         ) : (
-          notes.map((n) => (
-            <div
-              key={n.id}
-              style={{
-                backgroundColor: n.isSystemGenerated ? 'var(--bg-secondary)' : 'var(--bg-card)',
-                border: `1px solid ${n.isSystemGenerated ? 'var(--border-subtle)' : 'rgba(59, 130, 246, 0.3)'}`,
-                borderRadius: '8px',
-                padding: '14px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span
-                    style={{
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      padding: '2px 6px',
-                      borderRadius: '3px',
-                      backgroundColor: n.isSystemGenerated ? 'var(--bg-elevated)' : 'rgba(59, 130, 246, 0.15)',
-                      color: n.isSystemGenerated ? 'var(--text-muted)' : 'var(--accent-primary, #3b82f6)',
-                    }}
-                  >
-                    {n.isSystemGenerated ? 'SYSTEM GENERATED' : 'INVESTIGATOR LOG'}
-                  </span>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    {n.authorName || n.author?.name || 'Investigator'}
+          notes.map((n) => {
+            const isLong = n.content.length > TRUNCATE_LENGTH || n.content.split('\n').length > 3;
+            const isExpanded = !!expandedNotes[n.id];
+            const displayContent = isLong && !isExpanded ? `${n.content.slice(0, TRUNCATE_LENGTH)}...` : n.content;
+
+            return (
+              <div
+                key={n.id}
+                style={{
+                  backgroundColor: n.isSystemGenerated ? 'var(--bg-secondary)' : 'var(--bg-card)',
+                  border: `1px solid ${n.isSystemGenerated ? 'var(--border-subtle)' : 'rgba(59, 130, 246, 0.3)'}`,
+                  borderRadius: '8px',
+                  padding: '14px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        backgroundColor: n.isSystemGenerated ? 'var(--bg-elevated)' : 'rgba(59, 130, 246, 0.15)',
+                        color: n.isSystemGenerated ? 'var(--text-muted)' : 'var(--accent-primary, #3b82f6)',
+                      }}
+                    >
+                      {n.isSystemGenerated ? 'SYSTEM GENERATED' : 'INVESTIGATOR LOG'}
+                    </span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {n.authorName || n.author?.name || 'Investigator'}
+                    </span>
+                  </div>
+
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    {new Date(n.createdAt).toLocaleDateString('en-IN', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
 
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {new Date(n.createdAt).toLocaleDateString('en-IN', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                  {displayContent}
+                </div>
 
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                {n.content}
+                {isLong && (
+                  <div style={{ marginTop: '2px' }}>
+                    <button
+                      onClick={() => toggleExpand(n.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--accent-primary, #3b82f6)',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        padding: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                    >
+                      {isExpanded ? 'Show less ↑' : 'Show more ↓'}
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

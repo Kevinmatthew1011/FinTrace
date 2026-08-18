@@ -1,13 +1,30 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from '@/components/common/Header';
 import { GraphCanvas } from '@/components/network/GraphCanvas';
 import { NodeInspector } from '@/components/network/NodeInspector';
 import { FindingsPanel } from '@/components/network/FindingsPanel';
 import { PathFinderPanel } from '@/components/network/PathFinderPanel';
-import { FinancialGraph, GraphAnalysisResult, GraphNode } from '@/modules/graph/graphTypes';
+import { FinancialGraph, GraphAnalysisResult, GraphNode, GraphEdge } from '@/modules/graph/graphTypes';
 import { LoadingState, ErrorState } from '@/components/common/StateViews';
+
+type RiskTier = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+type NodeType = 'ENTITY' | 'ACCOUNT';
+
+interface NetworkFilterState {
+  riskLevels: Set<RiskTier>;
+  nodeTypes: Set<NodeType>;
+  suspiciousOnly: boolean;
+  minAmount: number;
+}
+
+const DEFAULT_FILTERS: NetworkFilterState = {
+  riskLevels: new Set(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+  nodeTypes: new Set(['ENTITY', 'ACCOUNT']),
+  suspiciousOnly: false,
+  minAmount: 0,
+};
 
 export default function NetworkPage() {
   const [rootId, setRootId] = useState('ENT-8821'); // Apex Logistics by default
@@ -23,6 +40,16 @@ export default function NetworkPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Filtering System State
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<NetworkFilterState>({
+    riskLevels: new Set(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+    nodeTypes: new Set(['ENTITY', 'ACCOUNT']),
+    suspiciousOnly: false,
+    minAmount: 0,
+  });
+  const [tempFilters, setTempFilters] = useState<NetworkFilterState>({ ...filters });
 
   const loadNetwork = useCallback(async () => {
     setLoading(true);
@@ -58,6 +85,54 @@ export default function NetworkPage() {
     loadNetwork();
   }, [loadNetwork]);
 
+  // Compute active filter count
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.riskLevels.size < 4) count++;
+    if (filters.nodeTypes.size < 2) count++;
+    if (filters.suspiciousOnly) count++;
+    if (filters.minAmount > 0) count++;
+    return count;
+  }, [filters]);
+
+  // Apply visual filtering to graph nodes and edges
+  const { filteredNodes, filteredEdges } = useMemo(() => {
+    if (!graphData) return { filteredNodes: [], filteredEdges: [] };
+
+    // Filter nodes
+    const nodes = graphData.nodes.filter((node) => {
+      // Always keep root node for navigation anchor
+      if (node.id === rootId) return true;
+
+      // Always keep explicitly selected node
+      if (selectedNodeId && node.id === selectedNodeId) return true;
+
+      // Node type check
+      if (!filters.nodeTypes.has(node.type as NodeType)) return false;
+
+      // Risk level check
+      if (!filters.riskLevels.has(node.riskLevel as RiskTier)) return false;
+
+      // Suspicious only check
+      if (filters.suspiciousOnly && !node.isFlagged && !node.isMule && node.riskLevel !== 'CRITICAL' && node.riskLevel !== 'HIGH') {
+        return false;
+      }
+
+      return true;
+    });
+
+    const nodeIdSet = new Set(nodes.map((n) => n.id));
+
+    // Filter edges connecting surviving nodes
+    const edges = graphData.edges.filter((edge) => {
+      if (!nodeIdSet.has(edge.source) || !nodeIdSet.has(edge.target)) return false;
+      if (filters.minAmount > 0 && (edge.amount || 0) < filters.minAmount) return false;
+      return true;
+    });
+
+    return { filteredNodes: nodes, filteredEdges: edges };
+  }, [graphData, rootId, selectedNodeId, filters]);
+
   const selectedNode: GraphNode | null =
     graphData?.nodes.find((n) => n.id === selectedNodeId) || null;
 
@@ -78,6 +153,47 @@ export default function NetworkPage() {
     }
   };
 
+  const toggleRiskFilter = (tier: RiskTier) => {
+    setTempFilters((prev) => {
+      const next = new Set(prev.riskLevels);
+      if (next.has(tier)) {
+        if (next.size > 1) next.delete(tier);
+      } else {
+        next.add(tier);
+      }
+      return { ...prev, riskLevels: next };
+    });
+  };
+
+  const toggleNodeTypeFilter = (type: NodeType) => {
+    setTempFilters((prev) => {
+      const next = new Set(prev.nodeTypes);
+      if (next.has(type)) {
+        if (next.size > 1) next.delete(type);
+      } else {
+        next.add(type);
+      }
+      return { ...prev, nodeTypes: next };
+    });
+  };
+
+  const handleApplyFilters = () => {
+    setFilters({ ...tempFilters });
+    setIsFilterOpen(false);
+  };
+
+  const handleResetFilters = () => {
+    const reset = {
+      riskLevels: new Set<RiskTier>(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']),
+      nodeTypes: new Set<NodeType>(['ENTITY', 'ACCOUNT']),
+      suspiciousOnly: false,
+      minAmount: 0,
+    };
+    setTempFilters(reset);
+    setFilters(reset);
+    setIsFilterOpen(false);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <Header />
@@ -93,8 +209,8 @@ export default function NetworkPage() {
           </p>
         </div>
 
-        {/* Depth & Search Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Depth, Search & Filter Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center' }}>
             <input
               type="text"
@@ -119,6 +235,187 @@ export default function NetworkPage() {
               Focus
             </button>
           </form>
+
+          {/* Filters Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => {
+                setTempFilters({ ...filters });
+                setIsFilterOpen(!isFilterOpen);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: activeFilterCount > 0 ? 'rgba(59, 130, 246, 0.15)' : 'var(--bg-card)',
+                border: activeFilterCount > 0 ? '1px solid var(--accent-primary, #3b82f6)' : '1px solid var(--border-subtle)',
+                color: activeFilterCount > 0 ? 'var(--accent-primary, #3b82f6)' : 'var(--text-primary)',
+              }}
+            >
+              <span>⚙️ Filters ▾</span>
+              {activeFilterCount > 0 && (
+                <span
+                  style={{
+                    backgroundColor: 'var(--accent-primary, #3b82f6)',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    borderRadius: '10px',
+                    padding: '1px 6px',
+                  }}
+                >
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Filter Popover Dropdown */}
+            {isFilterOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '110%',
+                  right: 0,
+                  width: '320px',
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px',
+                  boxShadow: '0 10px 25px rgba(0, 0, 0, 0.5)',
+                  padding: '18px',
+                  zIndex: 50,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Graph Density & Filter Rules
+                  </span>
+                  <button
+                    onClick={() => setIsFilterOpen(false)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '14px' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Risk Level Filter */}
+                <div>
+                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                    Risk Level:
+                  </span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                    {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as RiskTier[]).map((tier) => {
+                      const isChecked = tempFilters.riskLevels.has(tier);
+                      return (
+                        <label
+                          key={tier}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '11px',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleRiskFilter(tier)}
+                          />
+                          {tier}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Node Type Filter */}
+                <div>
+                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                    Node Type:
+                  </span>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.nodeTypes.has('ENTITY')}
+                        onChange={() => toggleNodeTypeFilter('ENTITY')}
+                      />
+                      Entity Nodes
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={tempFilters.nodeTypes.has('ACCOUNT')}
+                        onChange={() => toggleNodeTypeFilter('ACCOUNT')}
+                      />
+                      Account Nodes
+                    </label>
+                  </div>
+                </div>
+
+                {/* Flags Filter */}
+                <div>
+                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>
+                    Special Flags:
+                  </span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={tempFilters.suspiciousOnly}
+                      onChange={(e) => setTempFilters((prev) => ({ ...prev, suspiciousOnly: e.target.checked }))}
+                    />
+                    Suspicious / High-Risk Only
+                  </label>
+                </div>
+
+                {/* Minimum Amount Filter */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                    <span>Min Transfer Volume:</span>
+                    <span className="font-mono" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                      ₹{(tempFilters.minAmount / 1000).toFixed(0)}k
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1000000"
+                    step="50000"
+                    value={tempFilters.minAmount}
+                    onChange={(e) => setTempFilters((prev) => ({ ...prev, minAmount: Number(e.target.value) }))}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+
+                {/* Filter Actions */}
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+                  <button
+                    onClick={handleApplyFilters}
+                    className="btn-primary"
+                    style={{ flex: 1, padding: '6px 12px', fontSize: '11px', textAlign: 'center' }}
+                  >
+                    Apply Filters
+                  </button>
+                  <button
+                    onClick={handleResetFilters}
+                    className="btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: '11px' }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Depth Selector */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--bg-card)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-subtle)' }}>
@@ -164,16 +461,27 @@ export default function NetworkPage() {
             <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{rootId}</div>
           </div>
           <div>
-            <span style={{ color: 'var(--text-muted)' }}>Nodes / Edges:</span>
-            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{graphData.statistics.nodeCount} / {graphData.statistics.edgeCount}</div>
+            <span style={{ color: 'var(--text-muted)' }}>Visible Nodes / Edges:</span>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+              {filteredNodes.length} / {filteredEdges.length}
+              {filteredNodes.length < graphData.statistics.nodeCount && (
+                <span style={{ fontSize: '10px', color: 'var(--accent-primary, #3b82f6)', marginLeft: '4px', fontWeight: 500 }}>
+                  (Filtered from {graphData.statistics.nodeCount})
+                </span>
+              )}
+            </div>
           </div>
           <div>
             <span style={{ color: 'var(--text-muted)' }}>Entities / Accounts:</span>
-            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{graphData.statistics.entityCount} / {graphData.statistics.accountCount}</div>
+            <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+              {filteredNodes.filter((n) => n.type === 'ENTITY').length} / {filteredNodes.filter((n) => n.type === 'ACCOUNT').length}
+            </div>
           </div>
           <div>
             <span style={{ color: 'var(--text-muted)' }}>Suspicious Nodes:</span>
-            <div style={{ fontWeight: 700, color: '#ef4444' }}>{graphData.statistics.suspiciousNodeCount} Flagged</div>
+            <div style={{ fontWeight: 700, color: '#ef4444' }}>
+              {filteredNodes.filter((n) => n.isFlagged || n.isMule || n.riskLevel === 'CRITICAL' || n.riskLevel === 'HIGH').length} Flagged
+            </div>
           </div>
           <div>
             <span style={{ color: 'var(--text-muted)' }}>Network Risk:</span>
@@ -199,8 +507,8 @@ export default function NetworkPage() {
           {/* Main Visual Graph Canvas */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <GraphCanvas
-              nodes={graphData.nodes}
-              edges={graphData.edges}
+              nodes={filteredNodes}
+              edges={filteredEdges}
               rootId={rootId}
               selectedNodeId={selectedNodeId}
               onSelectNode={(id) => setSelectedNodeId(id)}

@@ -1,248 +1,218 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
+import Link from 'next/link';
 import { Header } from '@/components/common/Header';
-import { MetricCard } from '@/components/common/MetricCard';
-import { AIPredictionCard } from '@/components/ai/AIPredictionCard';
-import { AnomalyScoreCard } from '@/components/ai/AnomalyScoreCard';
-import { RiskFusionMatrix } from '@/components/ai/RiskFusionMatrix';
-import { XAIExplanationView } from '@/components/ai/XAIExplanationView';
-import { SuspiciousPatternGraph } from '@/components/ai/SuspiciousPatternGraph';
-import { AIAssessmentTimeline } from '@/components/ai/AIAssessmentTimeline';
-import { FullAIAssessment, AIOverviewStats, AIAssessmentTargetType } from '@/modules/ai-engine';
-import { LoadingState, ErrorState } from '@/components/common/StateViews';
 
-export default function AIPredictiveIntelligencePage() {
-  const [targetType, setTargetType] = useState<AIAssessmentTargetType>('ENTITY');
-  const [selectedTargetId, setSelectedTargetId] = useState('ENT-8821'); // Apex Logistics default
-  const [assessment, setAssessment] = useState<FullAIAssessment | null>(null);
-  const [overview, setOverview] = useState<AIOverviewStats | null>(null);
-
-  const [loading, setLoading] = useState(true);
-  const [isRecalculating, setIsRecalculating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const loadAIData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [overviewRes, assessRes] = await Promise.all([
-        fetch('/api/v1/ai/overview'),
-        fetch(`/api/v1/ai/assessment?targetType=${targetType}&targetId=${encodeURIComponent(selectedTargetId)}`),
-      ]);
-
-      if (!overviewRes.ok || !assessRes.ok) {
-        throw new Error('Failed to retrieve AI predictive intelligence records');
-      }
-
-      const overviewJson = await overviewRes.json();
-      const assessJson = await assessRes.json();
-
-      if (overviewJson.success && assessJson.success) {
-        setOverview(overviewJson.data);
-        setAssessment(assessJson.data);
-      } else {
-        throw new Error(assessJson.error?.message || 'Error loading AI intelligence data');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'AI Predictive Engine query failed');
-    } finally {
-      setLoading(false);
-    }
-  }, [targetType, selectedTargetId]);
-
-  useEffect(() => {
-    loadAIData();
-  }, [loadAIData]);
-
-  const handleRecalculate = async () => {
-    setIsRecalculating(true);
-    try {
-      const res = await fetch('/api/v1/ai/assessment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetType, targetId: selectedTargetId }),
-      });
-      const json = await res.json();
-      if (json.success && json.data) {
-        setAssessment(json.data);
-      }
-    } catch (err) {
-      console.error('Recalculate error:', err);
-    } finally {
-      setIsRecalculating(false);
-    }
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim();
-      if (q.startsWith('TX-') || q.startsWith('tx-')) {
-        setTargetType('TRANSACTION');
-      } else if (q.startsWith('ACC-') || q.startsWith('acc-')) {
-        setTargetType('ACCOUNT');
-      } else {
-        setTargetType('ENTITY');
-      }
-      setSelectedTargetId(q);
-      setSearchQuery('');
-    }
-  };
-
-  const handleSelectFromTimeline = (tType: AIAssessmentTargetType, tId: string) => {
-    setTargetType(tType);
-    setSelectedTargetId(tId);
-  };
-
+export default function AIAssistantComingSoonPage() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <Header />
 
-      {/* Page Title & Search Bar */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+      {/* Main Container Card */}
+      <div
+        style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '8px',
+          padding: '36px 32px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '28px',
+        }}
+      >
+        {/* Header Ribbon */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Automated Anomaly Detection & Behavioral Baselines
-            </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
             <span
               style={{
                 fontSize: '11px',
-                padding: '2px 8px',
-                borderRadius: '4px',
-                backgroundColor: 'rgba(56, 189, 248, 0.15)',
-                color: '#38bdf8',
                 fontWeight: 700,
-                border: '1px solid rgba(56, 189, 248, 0.3)',
+                padding: '3px 10px',
+                borderRadius: '4px',
+                backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                color: 'var(--accent-primary, #3b82f6)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
               }}
             >
-              INTELLIGENCE ACTIVE
+              AI Investigation Assistant
+            </span>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '4px',
+                backgroundColor: 'rgba(245, 158, 11, 0.15)',
+                color: '#f59e0b',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}
+            >
+              Coming Soon
             </span>
           </div>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Statistical Anomaly Baselines • Multi-Factor Risk Fusion • Explainable Pattern Detection • Generative AI Assistant: Coming Soon
+
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            AI-Assisted Financial Crime Investigation
+          </h1>
+          <p style={{ margin: '8px 0 0', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '800px' }}>
+            FinTrace currently provides comprehensive evidence-grounded fraud detection, behavioral anomaly analysis, multi-factor risk scoring, graph network intelligence, and end-to-end case management. The next generation will introduce an AI Investigation Assistant to help investigators summarize cases, explain risk drivers, and surface relevant evidence.
           </p>
         </div>
 
-        {/* Search / Target Select Form */}
-        <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center' }}>
-          <select
-            value={targetType}
-            onChange={(e) => setTargetType(e.target.value as AIAssessmentTargetType)}
+        {/* Feature Comparison Matrix */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '20px',
+          }}
+        >
+          {/* Active Features */}
+          <div
             style={{
               backgroundColor: 'var(--bg-secondary)',
               border: '1px solid var(--border-subtle)',
-              borderRight: 'none',
-              borderRadius: '4px 0 0 4px',
-              padding: '6px 10px',
-              fontSize: '12px',
-              color: 'var(--text-primary)',
-              outline: 'none',
+              borderRadius: '8px',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
             }}
           >
-            <option value="ENTITY">Entity</option>
-            <option value="TRANSACTION">Transaction</option>
-            <option value="ACCOUNT">Account</option>
-          </select>
-          <input
-            type="text"
-            placeholder="Subject ID (e.g. ENT-8821, ENT-4109, TX-9001)..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              backgroundColor: 'var(--bg-secondary)',
-              border: '1px solid var(--border-subtle)',
-              padding: '6px 12px',
-              fontSize: '12px',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              minWidth: '220px',
-            }}
-          />
-          <button
-            type="submit"
-            className="btn-primary"
-            style={{ borderRadius: '0 4px 4px 0', padding: '6px 12px', fontSize: '12px' }}
-          >
-            AI Inspect
-          </button>
-        </form>
-      </div>
-
-      {/* Top Overview KPI Ribbon */}
-      {overview && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-          <MetricCard
-            title="Total AI Inferences"
-            value={overview.totalAssessments}
-            periodComparison="PostgreSQL Neural Store"
-          />
-          <MetricCard
-            title="High-Confidence Fraud"
-            value={overview.highConfidenceFraudCount}
-            subValue={`${overview.likelyFraudCount} Likely Fraud Flags`}
-            isAlert={true}
-          />
-          <MetricCard
-            title="Average Fraud Probability"
-            value={`${(overview.averageFraudProbability * 100).toFixed(1)}%`}
-            subValue={`Anomaly Base: ${overview.averageAnomalyScore.toFixed(1)}/100`}
-            isAlert={overview.averageFraudProbability >= 0.4}
-          />
-          <MetricCard
-            title="AI Model Version"
-            value="v1.5.0"
-            subValue="FinTrace-NeuralEnsemble-v1"
-          />
-        </div>
-      )}
-
-      {loading ? (
-        <LoadingState message="Calculating statistical baseline deviations and multi-factor risk fusion..." />
-      ) : error ? (
-        <ErrorState message={error} onRetry={loadAIData} />
-      ) : assessment ? (
-        <>
-          {/* Main Inspection Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* AI Prediction & Probability Card */}
-              <AIPredictionCard
-                assessment={assessment}
-                onRecalculate={handleRecalculate}
-                isRecalculating={isRecalculating}
-              />
-
-              {/* Anomaly Score Card */}
-              <AnomalyScoreCard anomalyResult={assessment.anomalyResult} />
-
-              {/* Complex Detected Patterns */}
-              <SuspiciousPatternGraph patterns={assessment.suspiciousPatterns} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>✓</span>
+              <h2 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Current FinTrace Platform (Active & Verified)
+              </h2>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Risk Fusion Matrix (Phase 3 + Phase 4 + Phase 5) */}
-              <RiskFusionMatrix fusionResult={assessment.fusionResult} />
+            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Deterministic Multi-Factor Risk Intelligence:</strong> Rule-based evaluation with transparent scoring across velocity, amount anomalies, structuring, and counterparty exposure.
+              </li>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Fraud Network & Graph Intelligence:</strong> Multi-hop traversal, circular fund loop detection, and mule-chain account topology analysis.
+              </li>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Alert Prioritization & Investigator Triage:</strong> Real-time severity scoring, deduplication, and direct case conversion.
+              </li>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Full Investigation Dossier Management:</strong> Case lifecycle tracking, evidence docketing, immutable audit trails, and investigator notes.
+              </li>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Explainable Risk Attribution:</strong> Direct evidence-grounded factor contribution breakdown in the Risk tab.
+              </li>
+            </ul>
+          </div>
 
-              {/* Explainable AI (XAI) Evidence Dossier */}
-              <XAIExplanationView
-                evidenceList={assessment.evidence}
-                predictionResult={assessment.predictionResult}
-              />
+          {/* Planned AI Capabilities */}
+          <div
+            style={{
+              backgroundColor: 'var(--bg-secondary)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '8px',
+              padding: '24px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>⏳</span>
+              <h2 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Advanced AI Capabilities (Coming Soon)
+              </h2>
+            </div>
+
+            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Natural Language Case Summaries:</strong> Automated synthesis of multi-source investigation dossiers into executive briefs.
+              </li>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Interactive Investigation Q&A:</strong> Natural language querying across subpoenaed bank records and transaction histories.
+              </li>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Evidence Gap Discovery:</strong> Automated identification of missing KYC, corporate registrar filings, and wire documentation.
+              </li>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Automated STR Report Drafting:</strong> FIU-compliant Suspicious Transaction Report narrative generation.
+              </li>
+              <li>
+                <strong style={{ color: 'var(--text-primary)' }}>Cross-Case Syndicate Discovery:</strong> Machine learning pattern correlation across independent investigations.
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Quick Navigation Footer */}
+        <div
+          style={{
+            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+            border: '1px solid rgba(59, 130, 246, 0.2)',
+            borderRadius: '8px',
+            padding: '20px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '16px',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-primary, #3b82f6)' }}>
+              Ready for Live Investigation Work
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Access the operational investigation queue, fraud network graph, and risk intelligence engine today.
             </div>
           </div>
 
-          {/* Bottom Stream: Real-Time AI Assessment Timeline */}
-          {overview && (
-            <AIAssessmentTimeline
-              recentAssessments={overview.recentAssessments}
-              onSelectSubject={handleSelectFromTimeline}
-            />
-          )}
-        </>
-      ) : null}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <Link
+              href="/investigations"
+              className="btn-primary"
+              style={{ padding: '8px 16px', fontSize: '12px', textDecoration: 'none' }}
+            >
+              Open Investigations Queue ➔
+            </Link>
+            <Link
+              href="/network"
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '6px',
+                color: 'var(--text-primary)',
+                textDecoration: 'none',
+              }}
+            >
+              Inspect Fraud Network ➔
+            </Link>
+            <Link
+              href="/risk"
+              style={{
+                padding: '8px 16px',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: '6px',
+                color: 'var(--text-primary)',
+                textDecoration: 'none',
+              }}
+            >
+              View Risk Intelligence ➔
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -68,7 +68,7 @@ export default function OverviewPage() {
           Financial Crime Intelligence Overview
         </h1>
         <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          Live PostgreSQL 16 Telemetry • 560+ Transations • 120+ Entities • Real-Time Fraud Triage
+          Live PostgreSQL 16 Telemetry • 560+ Transactions • 120+ Entities • Multi-Factor Fraud Triage
         </p>
       </div>
 

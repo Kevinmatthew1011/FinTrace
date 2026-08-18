@@ -158,7 +158,7 @@ export const CaseRiskTab: React.FC<CaseRiskTabProps> = ({
                     borderRadius: '6px',
                   }}
                 >
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI Fraud Probability</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Pattern Match Index</div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-primary, #3b82f6)' }}>
                     {(aiRiskAssessment.fraudProbability * 100).toFixed(1)}%
                   </div>
@@ -172,7 +172,7 @@ export const CaseRiskTab: React.FC<CaseRiskTabProps> = ({
                     borderRadius: '6px',
                   }}
                 >
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Anomaly Score</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Behavioral Anomaly Score</div>
                   <div style={{ fontSize: '20px', fontWeight: 800, color: '#f59e0b' }}>
                     {aiRiskAssessment.anomalyScore}/100
                   </div>
@@ -188,7 +188,7 @@ export const CaseRiskTab: React.FC<CaseRiskTabProps> = ({
                   fontSize: '11px',
                 }}
               >
-                <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>AI-Enhanced Combined Fused Score:</div>
+                <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>Multi-Factor Fused Risk Score:</div>
                 <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>
                   {aiRiskAssessment.combinedScore}/100{' '}
                   <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -200,7 +200,7 @@ export const CaseRiskTab: React.FC<CaseRiskTabProps> = ({
               {aiRiskAssessment.evidence && aiRiskAssessment.evidence.length > 0 && (
                 <div>
                   <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                    Key AI Evidence:
+                    Key Behavioral Findings:
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {aiRiskAssessment.evidence.slice(0, 3).map((ev: any, idx: number) => (

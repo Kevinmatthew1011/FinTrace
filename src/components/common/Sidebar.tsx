@@ -17,7 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { name: 'Transactions', href: '/transactions', icon: '💳' },
   { name: 'Fraud Network', href: '/network', icon: '🕸️' },
   { name: 'Risk Intelligence', href: '/risk', icon: '⚡' },
-  { name: 'Anomaly Intelligence', href: '/ai', icon: '🧠', badge: 'Live', badgeType: 'info' },
+  { name: 'AI Assistant', href: '/ai', icon: '🤖', badge: 'Coming Soon', badgeType: 'warning' },
   { name: 'Alerts', href: '/alerts', icon: '🚨', badge: '156', badgeType: 'danger' },
   { name: 'Investigations', href: '/investigations', icon: '📁', badge: '24', badgeType: 'warning' },
   { name: 'Administration', href: '/admin', icon: '⚙️' },
@@ -128,26 +128,6 @@ export const Sidebar: React.FC = () => {
             );
           })}
         </nav>
-      </div>
-
-      {/* System Status Footer */}
-      <div
-        style={{
-          padding: '10px 12px',
-          borderRadius: '6px',
-          backgroundColor: 'var(--bg-card)',
-          border: '1px solid var(--border-subtle)',
-          fontSize: '11px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Engine:</span>
-          <span style={{ color: '#10b981', fontWeight: 600 }}>Active (Synthetic)</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--text-muted)' }}>SIH 2026:</span>
-          <span style={{ color: 'var(--text-secondary)' }}>Phase 1 Ready</span>
-        </div>
       </div>
     </aside>
   );
